@@ -31,13 +31,13 @@ This specifies an API called case.  It contains all the API calls that interact 
 
 Interacting with Tapir is also kept brief.  You will need to instantiate Tapir around one of the APIs.
 
-```
+```PHP
 $desk = new Tapir('desk');
 ```
 
 Then call the api and call methods.  To use case update as above,
 
-```
+```PHP
 $desk->api('case')->call('update', array('id' => 123, 'custom_fields' => array('my_custom_field' => 'foobar')));
 ```
 
