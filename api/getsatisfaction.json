@@ -1,0 +1,44 @@
+{
+  "name":"GetSatisfaction.com",
+  "apis":{
+    "topic": {
+      "all":{
+        "url":"https://api.getsatisfaction.com/topics.json",
+        "method":"get"
+      },
+      "topic":{
+        "url":"https://api.getsatisfaction.com/topics/{id}.json",
+        "method":"get"
+      },
+      "product":{
+        "url":"https://api.getsatisfaction.com/products/{product}.json",
+        "method":"get"
+      },
+      "company":{
+        "url":"https://api.getsatisfaction.com/companies/{company}.json",
+        "method":"get"
+      },
+      "create":{ 
+        "url":"https://api.getsatisfaction.com/companies/{company}/topics",
+        "method":"post",
+        "data":["topic"]
+      },
+      "update":{
+        "url":"https://api.getsatisfaction.com/topics/{id}",
+        "method":"put",
+        "data":["topic"]
+      },
+      "reply":{
+        "url":"https://api.getsatisfaction.com/topics/{id}/replies.json",
+        "method":"post",
+        "data":["reply"]
+      }
+    },
+    "people":{
+      "search":{
+        "url":"https://api.getsatisfaction.com/people.json",
+        "method":"get"
+      }
+    }
+  }
+}
