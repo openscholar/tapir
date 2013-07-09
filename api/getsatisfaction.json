@@ -1,5 +1,6 @@
 {
   "name":"GetSatisfaction.com",
+  "data_container":"data",
   "apis":{
     "topic": {
       "all":{

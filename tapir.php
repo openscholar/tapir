@@ -7,27 +7,27 @@ class Tapir {
   private $parameters; //all parameters - data and args
   private $config;
 
-  public function __construct($config) {
+  public function __construct($api, $settings = array()) {
     $this->parameters = array();
     
     //load conf from file
-    if (is_string($config)) {
-      $filename = __DIR__ . '/api/' . $config . '.json';
+    if (is_string($api)) {
+      $filename = __DIR__ . '/api/' . $api . '.json';
       if (is_readable($filename) && ($file = file_get_contents($filename))) {
-        $config = json_decode($file, TRUE);
-        if (!$config) {
+        $api = json_decode($file, TRUE);
+        if (!$api) {
           throw new Exception('Could not load json file: ' . $file);
           return FALSE;
         }
       }
     }
     
-    foreach ($config['apis'] as $api => $calls) {
-      $this->APIs[$api] = new API($this, $calls);
+    foreach ($api['apis'] as $name => $calls) {
+      $this->APIs[$name] = new API($this, $calls);
     }
     
-    unset($config['apis']);
-    $this->config = $config;
+    unset($api['apis']);
+    $this->config = $api + $settings;
   }
 
   public function setParameters($params = array()) {
@@ -36,6 +36,24 @@ class Tapir {
 
   public function getParameters() {
     return $this->parameters;
+  }
+
+  public function conf($var) {
+    return (isset($this->config[$var])) ? $this->config[$var] : NULL;
+  }
+  
+  /**
+   * Tapir doesn't have its own cache yet, but whatever uses tapir is welcome to cache data here.
+   * Set a cache_get_method and cache_set_method when constructing tapir. 
+   **/
+  private function cache_get($url, $parameters) {
+    $method = $this->conf('cache_get_method');
+    return (is_callable($method)) ? $method($url, $parameters) : NULL;
+  }
+  
+  private function cache_set($url, $parameters, $data, $headers = NULL) {
+    $method = $this->conf('cache_set_method');
+    return (is_callable($method)) ? $method($url, $parameters, $data, $headers) : NULL;
   }
 
   //use basic auth with username and password.
@@ -108,6 +126,11 @@ class Tapir {
   }
 
   public function query($method, $url, $parameters = array(), $return_json = TRUE) {
+    $original_url = $url;
+    if ($cached = $this->cache_get($original_url, $parameters)) {
+      return $cached;
+    }
+    
     $ch = curl_init();
 
     //for basic auth, use HTTP/Request2.  It handles PUT better.
@@ -168,17 +191,24 @@ class Tapir {
     
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-    $data = curl_exec($ch);
+    curl_setopt($ch, CURLOPT_HEADER, 1);
+    curl_setopt($ch, CURLOPT_VERBOSE, 1);
+    
+    $response = curl_exec($ch);
     curl_close($ch);
+    list ($header, $data) = explode("\r\n\r\n", $response, 2);
+    
     
 //    dpm($url);
 //    dpm($data);
 //    dpm($parameters);
     
     if ($return_json) {
+      $this->cache_set($original_url, $parameters, json_decode($data), $header);
       return ($data && $json = json_decode($data)) ? $json : FALSE;
     }
     
+    $this->cache_set($original_url, $parameters, $data, $header);
     return $data;
   }
 
@@ -224,7 +254,6 @@ class APICall {
 
 
 class API {
-  private $APICaltapirSs;
   private $tapirService;
 
   public function __construct($tapirService, $calls) {
@@ -233,6 +262,34 @@ class API {
     foreach ($calls as $name => $call) {
       $this->addCall($name, $call);
     }
+  }
+
+  /**
+   * @function page
+   *
+   * Loops over call() to fetch all pages.
+   * //Generators aren't availble everywhere yet.  Iterators are 5+
+   *
+   * //Try adding var to compare pages and current count of items.  That's for 2.0
+   */
+  public function page($cmd, $parameters = array(), $start = 0, $end = 1,  $page = 'page') { //}, $count_var = NULL, $container_var = NULL) {
+    if ($start > $end) {
+      throw new Exception('Start page must be lower than end page.');
+    }
+
+    $result = array();
+    for ($i = $start; $i <= $end; $i++) {
+      $parameters[$page] = $i;
+      $response = $this->call($cmd, $parameters);
+      $this->tapirService;
+      if ($container = $this->tapirService->conf('data_container')) {
+        $result = array_merge($result, $response->{$container});
+      } else {
+        $result[] = $response;
+      }
+    }
+
+    return $result;
   }
 
   public function call($cmd, $parameters = array()) {
