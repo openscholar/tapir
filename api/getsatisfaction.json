@@ -10,6 +10,10 @@
         "url":"https://api.getsatisfaction.com/topics/{id}.json",
         "method":"get"
       },
+    "company_topic":{
+        "url":"https://api.getsatisfaction.com/companies/{company}/topics.json",
+        "method":"get"
+    },
       "product":{
         "url":"https://api.getsatisfaction.com/products/{product}.json",
         "method":"get"
