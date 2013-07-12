@@ -147,7 +147,7 @@ class Tapir {
       $response = $request->send();
       $body = $response->getBody();
 
-      return $body;
+      return json_decode($body);
     }
 
 
