@@ -42,6 +42,10 @@
         "url":"https://api.getsatisfaction.com/topics/{id}/replies.json",
         "method":"post",
         "data":["reply"]
+      },
+      "replies":{
+        "url":"https://api.getsatisfaction.com/topics/{id}/replies.json",
+        "method":"get"
       }
     },
     "people":{
