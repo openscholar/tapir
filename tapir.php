@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * @class Tapir
+ *
+ * Generic API tool
+ */
 class Tapir {
   private $auth;
   private $auth_opts;
@@ -7,6 +12,14 @@ class Tapir {
   private $parameters; //all parameters - data and args
   private $config;
 
+  /**
+   * @function __construct
+   *
+   * @param $api
+   *   String name of an api, or array definition of one
+   * @param $settings
+   *   Optional settings
+   **/
   public function __construct($api, $settings = array()) {
     $this->parameters = array();
     
@@ -30,33 +43,62 @@ class Tapir {
     $this->config = $api + $settings;
   }
 
+  /**
+   * @function setParameters
+   *
+   * Paramters set here will apply to all api calls on this instance.  Useful for apis 
+   * like desk that include a configurable subdomain as part of the url.
+   **/
   public function setParameters($params = array()) {
     $this->parameters = $params;
   }
 
+  /**
+   * @funciton getParameters
+   *
+   * Getter for the paramters list.
+   */
   public function getParameters() {
     return $this->parameters;
   }
 
+  /**
+   * @function conf
+   *
+   * Returns config array so that classes extending Tapir have access.
+   */
   public function conf($var) {
     return (isset($this->config[$var])) ? $this->config[$var] : NULL;
   }
   
   /**
+   * @function cache_get
+   *
    * Tapir doesn't have its own cache yet, but whatever uses tapir is welcome to cache data here.
    * Set a cache_get_method and cache_set_method when constructing tapir. 
+   *
+   * Retrieves cached results
    **/
   private function cache_get($url, $parameters) {
     $method = $this->conf('cache_get_method');
     return (is_callable($method)) ? $method($url, $parameters) : NULL;
   }
   
+  /**
+   * @function cache_set
+   *
+   * Stores results in cache.  @see cache_get
+   */
   private function cache_set($url, $parameters, $data, $headers = NULL) {
     $method = $this->conf('cache_set_method');
     return (is_callable($method)) ? $method($url, $parameters, $data, $headers) : NULL;
   }
 
-  //use basic auth with username and password.
+  /**
+   * @function useBasicAuth
+   *
+   * Turns on basic auth mode.  Paramters are username and password.
+   */
   public function useBasicAuth($username, $password) {
     if (isset($this->auth)) {
       throw new Exception('Authentication has already been set.');
@@ -66,7 +108,13 @@ class Tapir {
     $this->auth_opts = array('username' => $username, 'password' => $password);
   }
 
-  //should this be a separate object?  feels like it could be overridable for different auth or transport options.
+  /**
+   * @function useOAuth
+   *
+   * Enables oauth mode.  Parameters are consumer key and secret, token, and token secret.
+   *
+   * @todo authorize and fetch token/secret from consumer pair.
+   */
   public function useOAuth($consumer_key, $consumer_secret, $token, $secret) {
   	$return = array();
     if (isset($this->auth)) {
@@ -106,6 +154,11 @@ class Tapir {
     return $return;
   }
 
+  /**
+   * @function buildQuery
+   *
+   * Builds a query given a url, parameters, and the http method. 
+   */
   public function buildQuery($method, $url, $parameters = array()) {
     if ($this->auth == 'oauth') {
       $request = OAuthRequest::from_consumer_and_token($this->auth_opts['consumer'], $this->auth_opts['token'], $method, $url);
@@ -117,7 +170,7 @@ class Tapir {
 
       $return = $request->to_url();
     } else {
-      //no auth specified.
+      //no auth specified or it doesn't affect the query.
       $return =  $url . '?' . http_build_query($parameters);
     }
 
@@ -125,9 +178,17 @@ class Tapir {
 
   }
 
+  /**
+   * @function query
+   *
+   * Performs a query and returns results.
+   *
+   * @todo My PUT requests have only worked with HTTP_Request2.  Figure out
+   * how to fix them without it, or just use it everywhere for consistency's sake.
+   */
   public function query($method, $url, $parameters = array(), $return_json = TRUE) {
     $original_url = $url;
-    if ($cached = $this->cache_get($original_url, $parameters)) {
+    if ($method == 'get' && $cached = $this->cache_get($original_url, $parameters)) {
       return $cached;
     }
     
@@ -198,13 +259,10 @@ class Tapir {
     curl_close($ch);
     list ($header, $data) = explode("\r\n\r\n", $response, 2);
     
-    
-//    dpm($url);
-//    dpm($data);
-//    dpm($parameters);
-    
     if ($return_json) {
-      $this->cache_set($original_url, $parameters, json_decode($data), $header);
+      if ($method == 'get') {
+        $this->cache_set($original_url, $parameters, json_decode($data), $header);
+      }
       return ($data && $json = json_decode($data)) ? $json : FALSE;
     }
     
@@ -212,6 +270,11 @@ class Tapir {
     return $data;
   }
 
+  /**
+   * @function api
+   *
+   * Returns one of the API endpoints specified in the json file.  
+   */
   public function api($api) {
     if (isset($this->APIs[$api])) {
       return  $this->APIs[$api];
@@ -223,21 +286,45 @@ class Tapir {
 }
 
 
+/**
+ * @class APICall
+ *
+ */
 class APICall {
   private $method = null;
   private $url; 
   private $data; //data must be passed in post body, not as a parameter
 
+  /**
+   * @function __construct
+   *
+   * Constructor function builds object from one of the json dfeined calls.
+   **/
   public function __construct($call) {
     $this->method = $call['method'];
     $this->url = $call['url'];
     $this->data = (isset($call['data'])) ? $call['data'] : NULL;
   }
 
+  /**
+   * @function method
+   *
+   * Getter for method
+   */
   public function method() { return $this->method; }
 
+  /**
+   * @function url
+   *
+   * Getter for url
+   */
   public function url() { return $this->url; }
 
+  /**
+   * @function data
+   *
+   * Filters out the data that has to be sent as a post body, not a query arg.
+   */
   public function data($parameters) {
     if ($this->data) {
       $use_params = array_combine($this->data, $this->data);
@@ -247,15 +334,30 @@ class APICall {
     }
   }
 
+  /**
+   * @function query_args
+   *
+   * As above, removes the data that can only be in a post body from the query args.
+   */
   public function query_args($parameters) {
     return ($this->data) ? array_diff_key($parameters, array_flip($this->data)) : array();
   }
 }
 
 
+/**
+ * @class API
+ *
+ * Stores all the calls for a single endpoint
+ */
 class API {
   private $tapirService;
 
+  /**
+   * @function __construct
+   *
+   * Constructor loops over calls available on this endpoint, builds and stores them.
+   **/
   public function __construct($tapirService, $calls) {
     $this->tapirService = $tapirService;
     $this->APICalls = array();
@@ -292,6 +394,11 @@ class API {
     return $result;
   }
 
+  /**
+   * @function call
+   *
+   * Sends an array of paramters to an api endpoint and returns the result
+   */
   public function call($cmd, $parameters = array()) {
     $tapir = $this->tapirService;
     $parameters += $tapir->getParameters();
@@ -299,7 +406,6 @@ class API {
     if (!isset($this->APICalls[$cmd])) {
       throw new Exception('Call does not exist: ' . $cmd);
     }
-
 
     $call = $this->APICalls[$cmd];
     $url = $this->getUrl($call->url(), $parameters);
@@ -309,10 +415,21 @@ class API {
     return $result;
   }
 
+  /**
+   * @function addCall
+   *
+   * Creates another call object in this API
+   */
   public function addCall($name, $call) {
     $this->APICalls[$name] = new APICall($call);
   }
 
+  /**
+   * @function getUrl
+   *
+   * Substitutes required tokens from parameters array into the url.  Throws an exception if 
+   * required tokens aren't provided.
+   */
   private function getUrl($url, &$parameters) {
     $pattern = '/{.*?}/';
     $tokens = array();
