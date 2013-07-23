@@ -14,6 +14,10 @@
         "url":"https://{subdomain}.desk.com/api/v2/cases/{id}",
         "method":"get"
       },
+      "message":{
+        "url":"https://{subdomain}.desk.com/api/v2/cases/{id}/message",
+        "method":"get"
+      },
       "create":{
         "method":"post",
         "url":"https://{subdomain}.desk.com/api/v2/customers/{customer_id}/cases"
