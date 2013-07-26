@@ -27,6 +27,10 @@
         "method":"patch",
         "data":["custom_fields"]
       },
+      "list_replies":{
+        "method":"get",
+        "url":"https://{subdomain}.desk.com/api/v2/cases/{id}/replies"
+      },
       "create_reply":{
         "method":"post",
         "url":"https://{subdomain}.desk.com/api/v2/cases/{id}/replies",
