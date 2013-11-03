@@ -43,6 +43,12 @@ $desk->api('case')->call('update', array('id' => 123, 'custom_fields' => array('
 
 Would update case 123 by setting its custom field (creatively titled my_custom_field) to foobar.
 
+You can also use the shorthand which uses PHP's `__call` to omit the `api` and `call` methods.  Your IDE won't be pleased but your wrists will.
+
+```PHP
+$desk->case()->update(array('id' => 123, 'custom_fields' => array('my_custom_field' => 'foobar')));
+```
+
 Advanced Usage
 --------------
 

@@ -220,6 +220,10 @@ class Tapir {
     }
   }
 
+  public function __call($method, $args) {
+    return $this->api($method);
+  }
+
 }
 
 
@@ -290,6 +294,10 @@ class API {
     }
 
     return $result;
+  }
+
+  public function __call($method, $args) {
+    return $this->call($method, $args[0]);
   }
 
   public function call($cmd, $parameters = array()) {
